@@ -703,12 +703,42 @@ please provide as detailed a description as possible:
 Returns a description of all commands and of the states that control a player,
 for AI agents (e.g. ioBroker.pi-agent) and scripts: `{ help, commands }`.
 `commands` lists every command with `write: true` if it can change something
-(only `cmdGeneral`).
+(`cmdGeneral`, `play`, `playSound`), and `standard` for the commands of the
+shared catalog of ioBroker adapters.
 
 ```js
 async function main() {
     const answer = await sendToAsync('squeezeboxrpc.0', 'help', {});
     console.log(answer.help, JSON.stringify(answer.commands));
+}
+main();
+```
+
+### Commands of the shared catalog: getPlayers, getMedia, play, playSound
+
+These commands have the names, parameters and answers that other media adapters
+use too (`media.getPlayers`, `media.getMedia`, `media.play`,
+`speech.playSound`), so a script or an agent can control them all the same way.
+They answer also without a message; errors are `{ error, reason }`.
+`help` describes all parameters.
+
+- `getPlayers {}` →
+  `{ players: [{ id, name, stateId, connected, active, kinds }] }`
+  (`id` = the MAC of the player)
+- `getMedia { list: 'favorites' | 'playlists', search?, limit?, offset? }` →
+  `{ items: [{ type, uri, name, image? }] }`
+- `play { uri?, device?, offset?, positionSec?, shuffle? }` plays `uri`
+  (from `getMedia`, or a URL) on the player `device` (id or name) and answers
+  `{ ok: true, device: { id, name } }` when it plays; without `uri` it resumes.
+- `playSound { url | file, device?, volume? }` plays a sound like the state
+  `Announce` (on all connected players without `device`) and answers
+  `{ ok: true, devices }` when it was played and the player was restored.
+
+```js
+async function main() {
+    const { items } = await sendToAsync('squeezeboxrpc.0', 'getMedia', { list: 'favorites', search: 'radio' });
+    const answer = await sendToAsync('squeezeboxrpc.0', 'play', { uri: items[0].uri, device: 'Kitchen' });
+    console.log(JSON.stringify(answer));
 }
 main();
 ```
@@ -852,6 +882,8 @@ are contained in the following CLI documentation:
 
 - (@GermanBluefox) Added the message "help": a description of all messages
   for AI agents (e.g. pi-agent), and common.supportedMessages.help
+- (@GermanBluefox) Added the standard commands of the shared catalog:
+  media.getPlayers, media.getMedia, media.play, speech.playSound
 
 ### 4.1.0 (2026-11-05)
 

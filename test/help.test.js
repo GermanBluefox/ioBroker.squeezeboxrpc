@@ -4,6 +4,15 @@ const { expect } = require('chai');
 const fs = require('node:fs');
 const path = require('node:path');
 const { COMMANDS, HELP } = require('../lib/help');
+const { STANDARD_COMMANDS } = require('../lib/standard');
+
+/** The commands of the shared catalog (HELP.md of ioBroker.assistant) the adapter follows */
+const STANDARD = {
+    getPlayers: 'media.getPlayers',
+    getMedia: 'media.getMedia',
+    play: 'media.play',
+    playSound: 'speech.playSound',
+};
 
 /**
  * A part of a source file
@@ -23,7 +32,7 @@ function sourcePart(file, from, to) {
 }
 
 /**
- * The commands of onMessage (squeezeboxrpc.js) and processMessages (lib/iosbserver.js)
+ * The commands of onMessage (squeezeboxrpc.js), processMessages (lib/iosbserver.js) and lib/standard.js
  *
  * @returns {string[]} command names
  */
@@ -32,7 +41,12 @@ function answeredCommands() {
         sourcePart('squeezeboxrpc.js', 'async onMessage(', 'onStateChange('),
         sourcePart('lib/iosbserver.js', 'this.processMessages = ', 'this.sendPlayerNames = '),
     ];
-    return [...new Set(parts.flatMap(text => [...text.matchAll(/\.command === '([^']+)'/g)].map(m => m[1])))];
+    return [
+        ...new Set([
+            ...parts.flatMap(text => [...text.matchAll(/\.command === '([^']+)'/g)].map(m => m[1])),
+            ...STANDARD_COMMANDS,
+        ]),
+    ];
 }
 
 describe('help', () => {
@@ -42,8 +56,26 @@ describe('help', () => {
         expect([...listed].sort()).to.deep.equal(answeredCommands().sort());
     });
 
-    it('marks only cmdGeneral as write', () => {
-        expect(COMMANDS.filter(entry => entry.write).map(entry => entry.command)).to.deep.equal(['cmdGeneral']);
+    it('marks cmdGeneral, play and playSound as write', () => {
+        expect(COMMANDS.filter(entry => entry.write).map(entry => entry.command)).to.deep.equal([
+            'cmdGeneral',
+            'play',
+            'playSound',
+        ]);
+    });
+
+    it('marks the commands of the shared catalog with their standard and names them in the text', () => {
+        const marked = Object.fromEntries(
+            COMMANDS.filter(entry => entry.standard).map(entry => [entry.command, entry.standard]),
+        );
+        expect(marked).to.deep.equal(STANDARD);
+        expect([...STANDARD_COMMANDS].sort()).to.deep.equal(Object.keys(STANDARD).sort());
+        for (const [command, standard] of Object.entries(STANDARD)) {
+            expect(standard, command).to.match(/^(media|speech)\.[a-z][A-Za-z]+$/);
+            expect(standard.split('.')[1], command).to.equal(command);
+            expect(HELP, standard).to.include(standard);
+            expect(HELP, command).to.include(`- ${command} {`);
+        }
     });
 
     it('names every command and every state a player or the server reacts to', () => {

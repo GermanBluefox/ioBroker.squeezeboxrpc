@@ -236,6 +236,15 @@ describe('announcement playback', () => {
         ).to.have.members([0, 65, 0, 40]);
     });
 
+    it('plays at the volume given to start instead of the one of the settings', async () => {
+        const { announcement, commands } = createAnnouncement();
+        await announcement.start('http://example.org/announce.mp3', 30);
+
+        expect(commands).to.deep.include(['mixer', 'volume', 30]);
+        expect(commands).not.to.deep.include(['mixer', 'volume', 65]);
+        expect(lastSetVolume(commands)).to.deep.equal(['mixer', 'volume', 40]);
+    });
+
     it('does not seek when restoring a remote stream', async () => {
         const { announcement, commands } = createAnnouncement({ remote: 1 });
         await announcement.play('http://example.org/announce.mp3');

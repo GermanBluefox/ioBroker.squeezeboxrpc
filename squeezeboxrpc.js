@@ -12,6 +12,7 @@ let squeezeboxServer;
 
 const IoSbServerRequire = require(`${__dirname}/lib/iosbserver`);
 const { COMMANDS, HELP } = require(`${__dirname}/lib/help`);
+const { STANDARD_COMMANDS } = require(`${__dirname}/lib/standard`);
 
 class Squeezeboxrpc extends utils.Adapter {
     /**
@@ -74,7 +75,8 @@ class Squeezeboxrpc extends utils.Adapter {
             }
             return;
         }
-        if (typeof obj === 'object' && obj.message) {
+        // The commands of the shared catalog (getPlayers …) answer also without a message
+        if (typeof obj === 'object' && (obj.message || STANDARD_COMMANDS.includes(obj.command))) {
             await this.serverInitialization;
             squeezeboxServer?.processMessages(obj);
         }
